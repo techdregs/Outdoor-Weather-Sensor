@@ -1,0 +1,166 @@
+esphome:
+  name: outdoor-weather-sensor
+  friendly_name: Outdoor Weather Sensor
+  on_boot:
+    then:
+      - switch.turn_on: sensor_power
+      - script.execute: test_ota
+  on_shutdown:
+    then:
+      - switch.turn_off: sensor_power
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "YOURKEY"
+
+ota:
+  password: "YOURPWD"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Outdoor-Weather-Sensor"
+    password: "FALLBACKPWD"
+
+captive_portal:
+
+switch:
+  - platform: gpio
+    pin: GPIO21 #set to GPIO pin providing power to sensors
+    id: sensor_power
+    internal: true  
+
+i2c:
+  sda: 6
+  scl: 7
+  scan: False #set to true to find device address, however scanning interferes with sensor_power startup (i2c bus starts before device is powered on), so not recommened except in prototyping for this setup
+
+sensor:
+  - platform: bme280
+    temperature:
+      name: "Temperature"
+      oversampling: 1x #recommended 1x oversampling to minimize BME280 self heating
+    pressure:
+      name: "Pressure"
+      oversampling: 1x
+    humidity:
+      name: "Humidity"
+      oversampling: 1x
+    address: 0x76 #if not found, try 0x77 or use scan setting in i2c component and see log for address
+    update_interval: 5s
+
+  - platform: adc
+    pin: 
+      number: 3
+      allow_other_uses: False #set to "True" if using calibration voltage routing below
+    name: "Soil Moisture"
+    unit_of_measurement: "%"
+    device_class: MOISTURE
+    update_interval: 5s
+    attenuation: 11db #required
+    filters:
+    - calibrate_linear: #set your own values here
+        - 1.40 ->  100.00
+        - 2.64 ->  0.00
+    - lambda: |
+       if (x < 0) return 0;
+       else if (x > 100) return 100;
+       else return (x);
+    accuracy_decimals: 0
+  
+  #read voltage for soil moisture calibration, check wet/dry voltages for above linear calibration
+  #- platform: adc
+  #  pin: 
+  #    number: 3
+  #    allow_other_uses: true
+  #  name: "Soil Voltage"
+  #  update_interval: 5s
+  #  attenuation: 11db
+
+  - platform: adc
+    pin: 
+      number: 4
+      allow_other_uses: true
+    name: "Battery Life"
+    unit_of_measurement: "%"
+    device_class: BATTERY
+    update_interval: 5s
+    attenuation: 11db #required
+    filters:
+     - multiply: 2.0
+     - calibrate_polynomial: #set your own values here
+        degree: 4
+        datapoints:
+        #Map 0.0 (from sensor) to 0.0 (true value)
+        - 3.4 ->  0.0
+        - 3.6 ->  8.43
+        - 3.81 ->  50.06
+        - 3.86 ->  57.63
+        - 3.92 ->  72.56
+        - 3.96 ->  90.96
+        - 4.05 ->  100
+     - lambda: |
+        if (x < 0) return 0; 
+        else if (x > 100) return 100;
+        else return (x);
+        
+  - platform: adc
+    pin: 
+      number: 4
+      allow_other_uses: true
+    name: "Battery Voltage"
+    update_interval: 5s
+    attenuation: 11db #required
+    filters:
+     - multiply: 2.00 #ajust as necessary to correct voltage divider
+
+  - platform: wifi_signal
+    name: "WiFi Signal Sensor"
+    update_interval: 5s
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+  - platform: homeassistant
+    name: "OTA Mode"
+    id: otamode
+    entity_id: input_boolean.bme_ota_mode   
+
+deep_sleep: #modify to adjust sleep/runtime
+  id: gotosleep
+  run_duration: 15s
+  sleep_duration: 885s
+
+button:
+  - platform: restart
+    name: "Restart"
+
+script:
+  - id: test_ota
+    mode: queued
+    then:
+      - logger.log: "Checking OTA Mode"
+      - if:
+          condition:
+            binary_sensor.is_on: otamode
+          then:
+            - logger.log: 'OTA Mode ON'
+            - deep_sleep.prevent: gotosleep
+          else:
+            - logger.log: 'OTA Mode OFF'
+            - deep_sleep.allow: gotosleep
+      - delay: 1s
+      - script.execute: test_ota
+        

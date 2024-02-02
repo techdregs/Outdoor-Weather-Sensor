@@ -1,0 +1,81 @@
+###NOTE this integration requires HACS addon for mini graph cards###
+
+
+type: vertical-stack
+cards:
+  - type: horizontal-stack
+    cards:
+      - type: custom:mini-graph-card
+        name: Temperature
+        entities:
+          - sensor.outdoor_weather_sensor_temperature
+        line_color: yellow
+        line_width: 3
+        font_size: 50
+        height: 25
+      - type: custom:mini-graph-card
+        name: Humidity
+        entities:
+          - sensor.outdoor_weather_sensor_humidity
+        line_color: teal
+        line_width: 3
+        font_size: 50
+        height: 25
+      - type: custom:mini-graph-card
+        name: Pressure
+        entities:
+          - sensor.outdoor_weather_sensor_pressure
+        line_color: pink
+        line_width: 3
+        font_size: 50
+        height: 25
+  - type: horizontal-stack
+    cards:
+      - type: entity
+        entity: binary_sensor.outdoor_weather_sensor_status
+        name: Connection Status
+      - type: entity
+        entity: update.outdoor_weather_sensor_firmware
+        name: Firmware Status
+  - type: horizontal-stack
+    cards:
+      - show_name: true
+        show_icon: true
+        type: button
+        entity: input_boolean.bme_ota_mode
+        icon_height: 25px
+        show_state: true
+      - show_name: true
+        show_icon: true
+        type: button
+        entity: button.outdoor_weather_sensor_restart
+        icon_height: 25px
+        name: Reset Device
+  - type: horizontal-stack
+    cards:
+      - type: custom:mini-graph-card
+        name: Voltage
+        entities:
+          - sensor.outdoor_weather_sensor_battery_voltage
+        line_color: red
+        line_width: 3
+        font_size: 50
+        height: 25
+      - type: custom:mini-graph-card
+        name: Battery Life
+        entities:
+          - sensor.outdoor_weather_sensor_battery_life
+        line_color: green
+        line_width: 3
+        font_size: 50
+        height: 25
+  - type: horizontal-stack
+    cards:
+      - type: custom:mini-graph-card
+        name: Outdoor Soil Moisture
+        entities:
+          - sensor.outdoor_weather_sensor_soil_moisture
+        line_color: Blue
+        line_width: 3
+        font_size: 50
+        height: 25
