@@ -48,7 +48,7 @@ i2c:
   scan: False #set to true to find device address, however scanning interferes with sensor_power startup (i2c bus starts before device is powered on), so not recommened except in prototyping for this setup
 
 sensor:
-  - platform: bme280
+  - platform: bme280_i2c #updated for ESPHome 2024.2
     temperature:
       name: "Temperature"
       oversampling: 1x #recommended 1x oversampling to minimize BME280 self heating
